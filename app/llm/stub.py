@@ -1,7 +1,9 @@
 """Deterministic offline model. It follows the same tool-calling protocol as Gemini, so the whole
 system (loop, guardrails, tracing, evals, UI) runs and is testable with no API key and no cost.
 It is a scripted policy, not a language model, and the UI labels it clearly."""
+import os
 import re
+import time
 
 from ..config import COMPANIES, LEADS, SELLER
 from .base import LLMResponse
@@ -65,6 +67,8 @@ class StubLLM:
     model = "stub-policy-v1"
 
     def complete(self, system: str, history: list[dict], tools: list[dict]) -> LLMResponse:
+        # Optional fake "thinking time" so demos can show the trace filling in live.
+        time.sleep(int(os.getenv("STUB_DELAY_MS", "0")) / 1000)
         lead_id = re.search(r"L-\d+", history[0]["text"]).group(0)
         domain = LEADS[lead_id]["domain"]
         res = _results(history)
