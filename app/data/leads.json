@@ -1,0 +1,12 @@
+[
+  {"id": "L-01", "name": "Maya Okafor", "title": "Head of Sales", "company": "Brightloop", "domain": "brightloop.example", "source": "Sales Navigator search: 'Head of Sales, B2B SaaS, 50-200 employees'"},
+  {"id": "L-02", "name": "Tomas Lindqvist", "title": "Founder", "company": "Fjordline Growth", "domain": "fjordline.example", "source": "Sales Navigator search: 'Founder, lead generation agencies'"},
+  {"id": "L-03", "name": "Priya Raman", "title": "SDR Manager", "company": "Vectorpay", "domain": "vectorpay.example", "source": "Sales Navigator search: 'SDR Manager, fintech'"},
+  {"id": "L-04", "name": "Daniel Mercer", "title": "VP of Engineering", "company": "Cobaltcloud", "domain": "cobaltcloud.example", "source": "Sales Navigator search: 'VP, developer tools'"},
+  {"id": "L-05", "name": "Aisha Bello", "title": "Owner", "company": "Bello Bakery", "domain": "bellobakery.example", "source": "Imported CSV row"},
+  {"id": "L-06", "name": "Lucas Moreau", "title": "Growth Lead", "company": "Pivotly", "domain": "pivotly.example", "source": "Sales Navigator search: 'Growth, HR software'"},
+  {"id": "L-07", "name": "Sofia Rossi", "title": "Head of Sales", "company": "Quillstack", "domain": "quillstack.example", "source": "Sales Navigator search: 'Head of Sales, B2B SaaS, 50-200 employees'"},
+  {"id": "L-08", "name": "Kenji Watanabe", "title": "Head of Revenue Operations", "company": "Tallyhook", "domain": "tallyhook.example", "source": "Sales Navigator search: 'RevOps, SaaS'"},
+  {"id": "L-09", "name": "Grace Mensah", "title": "Sales Director", "company": "Meridian Global Group", "domain": "meridian-global.example", "source": "Sales Navigator search: 'Sales Director'"},
+  {"id": "L-10", "name": "Omar Haddad", "title": "Head of Business Development", "company": "Kitesail Studio", "domain": "kitesail.example", "source": "Sales Navigator search: 'Business Development, agencies'"}
+]
