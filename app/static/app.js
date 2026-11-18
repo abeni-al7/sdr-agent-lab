@@ -183,7 +183,7 @@ async function runView(id) {
           ${!spans.length && !live ? `<div class="skeleton">No spans recorded.</div>` : ""}
         </div>
       </section>
-      <aside class="outcome" aria-label="Outcome">${outcome(run, draft, spans)}</aside>
+      <aside class="outcome" aria-label="Outcome">${outcome(run, draft, spans, lead)}</aside>
     </div>`;
 
   view.querySelectorAll(".trace-row > button").forEach((b) => b.addEventListener("click", () => {
@@ -226,7 +226,7 @@ const guardSummary = (s) => {
   return "";
 };
 
-function outcome(run, draft, spans) {
+function outcome(run, draft, spans, lead = {}) {
   if (run.status === "running") return `<div class="verdict"><h2>Working…</h2><p>The trace updates live as each step finishes.</p></div>`;
   const guards = spans.filter((s) => s.name === "draft_checks");
   const tries = guards.length ? `<p class="data muted">guardrail attempts: ${guards.map((g) => (g.output?.passed ? "pass" : "fail")).join(" → ")}</p>` : "";
@@ -234,7 +234,7 @@ function outcome(run, draft, spans) {
     return `
       <div class="verdict"><h2>Draft waiting for review</h2>${tries}</div>
       <article class="letter" aria-label="Draft email">
-        <div class="to">To ${esc(draft.lead_id)} · ${mark(draft.status)}</div>
+        <div class="to">To ${esc(lead.name || draft.lead_id)}${lead.title ? `, ${esc(lead.title)}` : ""} · ${mark(draft.status)}</div>
         <div class="subject">${esc(draft.subject)}</div>
         <div class="body">${esc(draft.body)}</div>
       </article>

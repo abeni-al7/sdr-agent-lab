@@ -142,9 +142,9 @@ main:focus { outline: none; }
 .kind.llm { color: var(--signal-ink); }
 .kind.guard { color: var(--pass); }
 .kind.memory { color: var(--hold); }
-.span-name { font: 500 0.88rem var(--f-data); display: flex; align-items: center; gap: 8px; min-width: 0; }
+.span-name { font: 500 0.88rem var(--f-data); display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; padding-right: 12px; }
 .span-name .tag { font: 400 0.72rem var(--f-ui); color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.flag { color: var(--signal-ink); display: inline-flex; align-items: center; gap: 4px; font: 500 0.72rem var(--f-ui); white-space: nowrap; }
+.flag { color: var(--signal-ink); display: inline-flex; align-items: center; gap: 4px; font: 500 0.72rem var(--f-ui); white-space: nowrap; min-width: 0; overflow: hidden; }
 .flag svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .bar-track { height: 6px; background: var(--rule); border-radius: 1px; overflow: hidden; }
 .bar { height: 100%; background: var(--bar); transform-origin: left; animation: grow 420ms var(--ease) both; }
