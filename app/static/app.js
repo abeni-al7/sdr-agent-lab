@@ -85,24 +85,54 @@ async function leadsView() {
     <div class="page-head">
       <div>
         <h1>Leads</h1>
-        <p>Ten fictional prospects from Sales Navigator-style searches. Run the agent on one and watch every step it takes.
+        <p>Add a real lead, or try one of ten fictional ones. Run the agent and watch every step it takes.
         It qualifies the lead, researches the company with scoped tools, and drafts an email only a human can approve.</p>
       </div>
     </div>
+    <details class="add-lead" ${leads.some((l) => l.live) ? "" : "open"}>
+      <summary>Add a real lead</summary>
+      <p class="muted">Real leads are researched live from free public sources: the company website (robots.txt respected),
+      Google News, public job boards (Greenhouse, Lever, Ashby) and Wikidata. Size and industry are optional; copy them from
+      Sales Navigator if Wikidata does not know the company. Nothing is ever sent.</p>
+      <form id="add-lead" class="lead-form">
+        <label><span>Name</span><input type="text" name="name" required maxlength="120" placeholder="Jane Doe"></label>
+        <label><span>Title</span><input type="text" name="title" required maxlength="160" placeholder="Head of Sales"></label>
+        <label><span>Company</span><input type="text" name="company" required maxlength="120" placeholder="Acme"></label>
+        <label><span>Website</span><input type="text" name="domain" required maxlength="253" placeholder="acme.com"></label>
+        <label><span>Employees <em>optional</em></span><input type="number" name="employees" min="1" placeholder="120"></label>
+        <label><span>Industry <em>optional</em></span><input type="text" name="industry" maxlength="160" placeholder="B2B SaaS"></label>
+        <label><span>News topic <em>optional</em></span><input type="text" name="topic" maxlength="40" placeholder="CRM"></label>
+        <div class="row-actions"><button class="btn signal" type="submit">${ICON.play}Add and run</button></div>
+      </form>
+    </details>
     <table class="ledger">
       <thead><tr><th>Lead</th><th>Company</th><th class="num hide-sm">Size</th><th>Last decision</th><th></th></tr></thead>
       <tbody>
         ${leads.map((l) => `
           <tr>
-            <td class="who"><strong>${esc(l.name)}</strong><span>${esc(l.title)} · <span class="data">${esc(l.id)}</span></span></td>
-            <td class="who"><strong>${esc(l.company)}</strong><span>${esc(l.industry)} · ${esc(l.hq)}</span></td>
-            <td class="num hide-sm">${esc(l.employees.toLocaleString("en-US"))}</td>
+            <td class="who"><strong>${esc(l.name)}${l.live ? ` <span class="tag-live">real</span>` : ""}</strong><span>${esc(l.title)} · <span class="data">${esc(l.id)}</span></span></td>
+            <td class="who"><strong>${esc(l.company)}</strong><span>${esc([l.industry, l.hq].filter(Boolean).join(" · ") || l.domain)}</span></td>
+            <td class="num hide-sm">${l.employees ? esc(l.employees.toLocaleString("en-US")) : "?"}</td>
             <td>${l.latest ? `<a href="#/run/${esc(l.latest.run_id)}">${mark(l.latest.status === "running" ? "running" : l.latest.decision || "error")}</a>` : mark("none", "not run")}</td>
             <td><button class="btn" data-run="${esc(l.id)}" aria-label="Run the agent on ${esc(l.name)}">${ICON.play}Run agent</button></td>
           </tr>`).join("")}
       </tbody>
     </table>`;
   view.querySelectorAll("[data-run]").forEach((b) => b.addEventListener("click", () => startRun(b.dataset.run, b)));
+  document.getElementById("add-lead").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const btn = ev.target.querySelector("button");
+    const body = Object.fromEntries([...new FormData(ev.target)].map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
+    if (body.employees) body.employees = Number(body.employees);
+    btn.disabled = true;
+    try {
+      const lead = await api("/api/leads", { method: "POST", body: JSON.stringify(body) });
+      await startRun(lead.id, btn);
+    } catch (e) {
+      toast(e.message, true);
+      btn.disabled = false;
+    }
+  });
 }
 
 async function startRun(leadId, btn) {
@@ -132,7 +162,8 @@ async function runView(id) {
     <div class="page-head" style="margin-top:18px">
       <div>
         <h1>${esc(lead.name)}, ${esc(company.name)}</h1>
-        <p>${esc(lead.title)} · ${esc(company.industry)} · ${esc(company.employees)} people · <span class="data">${esc(run.id)}</span></p>
+        <p>${esc([lead.title, lead.live ? (company.found || lead.domain) : company.industry, !lead.live && company.employees ? `${company.employees} people` : null].filter(Boolean).join(" · "))}
+        · ${lead.live ? `<span class="tag-live">real lead, live research</span> · ` : ""}<span class="data">${esc(run.id)}</span></p>
       </div>
       <div>${live ? mark("running") : mark(run.decision || "error")}</div>
     </div>

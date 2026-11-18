@@ -1,4 +1,5 @@
 """HTTP API + static console. Runs execute in background threads; the UI polls the trace."""
+import re
 import threading
 import time
 from collections import defaultdict, deque
@@ -7,12 +8,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from . import db
+from .research import live
+
+from . import db, leads as lead_store
 from .agent import memory
 from .agent.loop import create_run, execute_run, get_llm, review_draft
-from .config import BASE_DIR, COMPANIES, LEADS, SELLER, settings
+from .config import BASE_DIR, SELLER, settings
 from .evals.runner import CASES, run_suite
 
 
@@ -69,21 +72,50 @@ def leads():
         for r in conn.execute(db.select(db.runs).where(db.runs.c.eval_batch.is_(None)).order_by(db.runs.c.started_at)):
             latest[r.lead_id] = {"run_id": r.id, "status": r.status, "decision": r.decision}
     out = []
-    for lead in LEADS.values():
-        c = COMPANIES[lead["domain"]]
-        out.append({**lead, "industry": c["industry"], "employees": c["employees"], "hq": c["hq"],
+    for lead in lead_store.all_leads():
+        c = lead_store.company(lead)
+        out.append({**lead, "industry": c.get("industry"), "employees": c.get("employees"), "hq": c.get("hq"),
                     "latest": latest.get(lead["id"])})
     return out
+
+
+class LeadIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    title: str = Field(min_length=2, max_length=160)
+    company: str = Field(min_length=1, max_length=120)
+    domain: str = Field(min_length=4, max_length=253)
+    industry: str | None = Field(default=None, max_length=160)
+    employees: int | None = Field(default=None, ge=1, le=5_000_000)
+    hq: str | None = Field(default=None, max_length=120)
+    topic: str | None = Field(default=None, max_length=40)
+
+
+@app.post("/api/leads")
+def add_lead(body: LeadIn, request: Request):
+    """Add a real lead. Research runs live from free public sources when the agent is started."""
+    _limit(f"lead:{_ip(request)}", settings.leads_per_hour_per_ip)
+    try:
+        domain = live.normalize_domain(body.domain)
+    except live.ResearchError as exc:
+        raise HTTPException(422, str(exc))
+    clean = {k: (v.strip() if isinstance(v, str) else v) for k, v in body.model_dump().items()}
+    return lead_store.add(**{**clean, "domain": domain})
 
 
 class RunIn(BaseModel):
     lead_id: str
 
 
+def _lead_or_404(lead_id: str) -> dict:
+    lead = lead_store.get(lead_id)
+    if not lead:
+        raise HTTPException(404, "unknown lead")
+    return lead
+
+
 @app.post("/api/runs")
 def start_run(body: RunIn, request: Request):
-    if body.lead_id not in LEADS:
-        raise HTTPException(404, "unknown lead")
+    _lead_or_404(body.lead_id)
     _limit(f"run:{_ip(request)}", settings.runs_per_hour_per_ip)
     llm = get_llm()
     run_id = create_run(body.lead_id, llm=llm)
@@ -97,7 +129,8 @@ def list_runs(limit: int = 40, include_evals: bool = False):
     if not include_evals:
         q = q.where(db.runs.c.eval_batch.is_(None))
     with db.engine.connect() as conn:
-        return [{**db.row(r), "lead": LEADS[r.lead_id]} for r in conn.execute(q)]
+        rows = [db.row(r) for r in conn.execute(q)]
+    return [{**r, "lead": lead_store.get(r["lead_id"])} for r in rows if lead_store.get(r["lead_id"])]
 
 
 @app.get("/api/runs/{run_id}")
@@ -109,7 +142,13 @@ def get_run(run_id: str):
         spans = [db.row(s) for s in conn.execute(
             db.select(db.spans).where(db.spans.c.run_id == run_id).order_by(db.spans.c.seq))]
         d = conn.execute(db.select(db.drafts).where(db.drafts.c.run_id == run_id)).first()
-    return {"run": db.row(r), "lead": LEADS[r.lead_id], "company": COMPANIES[LEADS[r.lead_id]["domain"]],
+    lead = _lead_or_404(r.lead_id)
+    company = dict(lead_store.company(lead))
+    if lead["live"]:  # show what the run itself found (e.g. Wikidata filled the size)
+        got = next((s["output"] for s in spans if s["name"] == "get_lead" and isinstance(s["output"], dict)), {})
+        m = re.search(r"\(([^)]*)\)\.$", got.get("summary", "") or "")
+        company["found"] = m.group(1) if m else None
+    return {"run": db.row(r), "lead": lead, "company": company,
             "spans": spans, "draft": db.row(d) if d else None}
 
 
@@ -123,7 +162,8 @@ def list_drafts(status: str = "pending"):
     else:
         q = q.where(db.drafts.c.status != "eval")
     with db.engine.connect() as conn:
-        return [{**db.row(d), "lead": LEADS[d.lead_id]} for d in conn.execute(q)]
+        rows = [db.row(d) for d in conn.execute(q)]
+    return [{**d, "lead": lead_store.get(d["lead_id"])} for d in rows if lead_store.get(d["lead_id"])]
 
 
 class ReviewIn(BaseModel):
@@ -152,8 +192,8 @@ def check_guardrails(body: CheckIn):
     """Red-team panel: run the real draft checks on any email, using the sources a run would have read."""
     from .agent import guardrails, tools as t
 
-    if body.lead_id not in LEADS:
-        raise HTTPException(404, "unknown lead")
+    if _lead_or_404(body.lead_id)["live"]:
+        raise HTTPException(400, "the guardrail playground uses demo leads only")
     ctx = t.RunContext(run_id="redteam", lead_id=body.lead_id, eval_mode=True)
     ctx.sources["seller:profile"] = SELLER["profile"]
     t.recall_memory(ctx, body.lead_id)

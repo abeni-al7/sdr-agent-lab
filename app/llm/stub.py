@@ -5,7 +5,8 @@ import os
 import re
 import time
 
-from ..config import COMPANIES, LEADS, SELLER
+from .. import leads
+from ..config import SELLER
 from .base import LLMResponse
 
 
@@ -32,22 +33,23 @@ def _banned_terms(lessons: list[str]) -> list[str]:
 
 
 def _compose(lead_id: str, res: dict, short: bool) -> dict:
-    lead = LEADS[lead_id]
+    lead = leads.require(lead_id)
     first = lead["name"].split()[0]
-    company = COMPANIES[lead["domain"]]
+    company = leads.company(lead)
     banned = _banned_terms(res.get("recall_memory", {}).get("reviewer_lessons", []))
     signals = [s for s in res.get("search_company_signals", {}).get("signals", [])
                if not any(t in s["signal"].lower() for t in banned)]
 
-    if signals:
+    if signals and not lead.get("live"):  # live headlines need judgement; the scripted stub uses the website
         hook = signals[0]["signal"].split(" (")[0]
         hook_text = hook.replace(company["name"] + " ", "", 1)
         opener = f"I saw that {company['name']} {hook_text}."
         fact = {"claim": hook, "source_id": signals[0]["source_id"]}
     else:
         page = res.get("read_company_page", {}).get("untrusted_content", "")
-        sentence = next((s.strip() for s in page.split(".") if "outbound" in s or "prospect" in s), page.split(".")[0])
-        opener = f"I read that {sentence[0].lower() + sentence[1:]}."
+        parts = [p.strip() for p in page.replace("\n", ". ").split(".") if len(p.split()) >= 6]
+        sentence = next((p for p in parts if "outbound" in p or "prospect" in p), parts[0] if parts else company["name"])
+        opener = f"I read on your website: \"{sentence}.\"" if lead.get("live") else f"I read that {sentence[0].lower() + sentence[1:]}."
         fact = {"claim": sentence, "source_id": f"page:{lead['domain']}"}
 
     value = "ListForge turns Sales Navigator searches into clean, verified prospect lists, so reps spend their time selling."
@@ -69,8 +71,8 @@ class StubLLM:
     def complete(self, system: str, history: list[dict], tools: list[dict]) -> LLMResponse:
         # Optional fake "thinking time" so demos can show the trace filling in live.
         time.sleep(int(os.getenv("STUB_DELAY_MS", "0")) / 1000)
-        lead_id = re.search(r"L-\d+", history[0]["text"]).group(0)
-        domain = LEADS[lead_id]["domain"]
+        lead_id = re.search(r"Lead to work on: (\S+?)\.", history[0]["text"]).group(1)
+        domain = leads.require(lead_id)["domain"]
         res = _results(history)
 
         def call(name, **args):

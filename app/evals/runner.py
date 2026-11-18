@@ -18,7 +18,8 @@ from pathlib import Path
 
 from .. import db
 from ..agent.loop import get_llm, run_agent
-from ..config import LEADS, settings
+from .. import leads as lead_store
+from ..config import settings
 
 CASES = json.loads((Path(__file__).parent / "cases.json").read_text())
 
@@ -62,7 +63,7 @@ def score_case(case: dict, run: dict, draft: dict | None, guard_spans: list, jud
         if judge:
             try:
                 grade, tin, tout = judge(JUDGE_PROMPT.format(
-                    lead=LEADS[case["lead_id"]], facts=draft["facts"], subject=draft["subject"], body=draft["body"]))
+                    lead=lead_store.require(case["lead_id"]), facts=draft["facts"], subject=draft["subject"], body=draft["body"]))
                 result["judge"] = grade
                 result["judge_tokens"] = tin + tout
             except Exception as exc:  # judging is best-effort

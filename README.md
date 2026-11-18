@@ -24,7 +24,18 @@ flowchart LR
 | **Observability** | Every LLM call, tool call, memory read and check is a span with input, output, duration, tokens, cost and flags. |
 | **Evals** | 10 labelled cases (draft, disqualify, skip, injection, no data) + an LLM judge. Latest: 10 of 10 passed. |
 
-All leads and companies are fictional (`.example` domains). Nothing is ever sent.
+Ten fictional demo leads (`.example` domains) show every path offline. **Real leads** added in the console are researched
+live from free, keyless public sources:
+
+| Source | What it gives |
+|---|---|
+| The company website (home + about page, robots.txt respected) | What they do, in their own words |
+| Google News RSS (last 90 days, optional topic word to skip same-name noise) | Recent headlines |
+| Public job boards: Greenhouse, Lever, Ashby | Open roles, and how many are sales roles |
+| Wikidata (only when its official website matches the domain) | Industry, employee count, HQ |
+
+Fetching is locked to public hosts on ports 80/443 (every redirect re-checked, size and time capped), so a typed
+domain cannot reach internal addresses. Nothing is ever sent.
 
 Read more: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (diagrams, design decisions, problems, lessons) and
 [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) (a 5-minute walkthrough).
@@ -46,11 +57,14 @@ Open http://localhost:8077. Without a key, a scripted **stub policy** drives the
 and the header says so.
 
 ```bash
-pytest -q                     # 16 offline tests (stub, no key, no cost)
+pytest -q                     # 31 offline tests (stub, fake network, no key, no cost)
 python -m app.evals.runner    # eval suite with whatever provider is configured; exits 1 if any case fails
 ```
 
 ## Try these
+
+Or open **Add a real lead** on the Leads page: name, title, company and website (size and industry are optional,
+copy them from Sales Navigator if Wikidata does not know the company).
 
 | Lead | What it shows |
 |---|---|
@@ -63,6 +77,16 @@ python -m app.evals.runner    # eval suite with whatever provider is configured;
 Then reject Maya's draft with *"Don't mention hiring. Lead with their expansion instead."* and run her again.
 The new draft follows the lesson. On **How it works**, the "Try the guardrails" panel runs the real checks on a
 bad email.
+
+## Use it as a skill (Claude Code, Codex, Cursor, ...)
+
+`skill/sdr-lead-research/` is the same workflow packaged as a portable `SKILL.md` skill: give your agent one lead,
+and it checks memory, scores the ICP, researches the company, removes prompt injection from web text and writes a
+first email that must pass the same guardrails before it reaches you. A small standard-library script
+(`scripts/sdr.py`) runs the checks in code, and state lives in `./sdr/` in your project. Nothing is ever sent.
+
+Copy the folder into `~/.claude/skills/` (or your agent's skills folder) and ask: *"Research Maya Okafor at
+brightloop.com and write a first email."*
 
 ## Deploy (free tiers)
 
@@ -79,11 +103,13 @@ Reset demo data: `curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" https://sdr-agen
 app/
   agent/       loop.py (agent loop), tools.py (8 scoped tools), guardrails.py, memory.py, prompts.py
   llm/         gemini.py (REST, function calling, fallback chain), stub.py (offline policy)
+  research/    live.py: free live research (website, Google News RSS, job boards, Wikidata), safe fetching
   observability/tracer.py   spans for every step
   evals/       cases.json (10 labelled leads), runner.py (checks + LLM judge)
   data/        fictional leads, company pages, signals, seller and ICP
   static/      the console (no build step)
   main.py      FastAPI routes
+skill/         the portable SKILL.md version (sdr-lead-research)
 tests/         offline tests
 ```
 

@@ -32,6 +32,7 @@ class Settings:
 
     runs_per_hour_per_ip: int = int(os.getenv("RUNS_PER_HOUR_PER_IP", "40"))
     evals_per_hour: int = int(os.getenv("EVALS_PER_HOUR", "6"))
+    leads_per_hour_per_ip: int = int(os.getenv("LEADS_PER_HOUR_PER_IP", "20"))
     admin_token: str = os.getenv("ADMIN_TOKEN", "").strip()
 
     # USD per 1M tokens, used only for the cost estimate shown in traces

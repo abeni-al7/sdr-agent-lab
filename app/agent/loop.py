@@ -5,8 +5,8 @@ Every step is traced.
 """
 import time
 
-from .. import db
-from ..config import LEADS, SELLER, settings
+from .. import db, leads
+from ..config import SELLER, settings
 from ..llm.base import LLMError
 from ..observability.tracer import Tracer
 from . import memory, tools
@@ -28,7 +28,7 @@ def _cost(tokens_in: int, tokens_out: int, provider: str) -> float:
 
 
 def create_run(lead_id: str, eval_batch: str | None = None, llm=None) -> str:
-    if lead_id not in LEADS:
+    if not leads.get(lead_id):
         raise ValueError(f"unknown lead {lead_id}")
     llm = llm or get_llm()
     run_id = db.new_id("run")
@@ -86,7 +86,7 @@ def execute_run(run_id: str, llm=None) -> dict:
                     if name == "read_company_page" and out.get("security", {}).get("injections_removed"):
                         s.status = "flagged"
                         s.flags.append("prompt_injection_removed")
-                if name == "read_company_page" and ctx.findings:
+                if name == "read_company_page" and any(f.get("pattern_hit") for f in ctx.findings):
                     with tracer.span("guard", "injection_scan", {"source": f"page:{ctx.domain}"}) as g:
                         g.status, g.flags = "flagged", ["prompt_injection"]
                         g.output = {"findings": ctx.findings, "action": "removed before the model saw the page"}
@@ -133,7 +133,7 @@ def review_draft(draft_id: str, approve: bool, note: str = "", apply_globally: b
             raise ValueError(f"draft is already {d['status']}")
         conn.execute(db.update(db.drafts).where(db.drafts.c.id == draft_id).values(
             status="approved" if approve else "rejected", reviewer_note=note, reviewed_at=time.time()))
-    lead = LEADS[d["lead_id"]]
+    lead = leads.require(d["lead_id"])
     if approve:
         memory.remember(f"lead:{lead['id']}", "outreach",
                         {"summary": f"Approved email: {d['subject']}", "contacted_at": time.time(), "draft_id": draft_id},

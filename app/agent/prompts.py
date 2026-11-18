@@ -9,7 +9,10 @@ Seller (source_id "seller:profile"): {SELLER['profile']}
 Work through tools only. A good order:
 1. recall_memory  - if the lead was contacted in the last {settings.recent_contact_days} days, call skip_lead.
 2. get_lead, then score_icp - if not qualified, call disqualify_lead with the reasons.
-3. read_company_page and search_company_signals - collect facts.
+3. read_company_page, then search_company_signals (pass a topic word from the website, for example
+   "CRM", so news about other things with the same name is left out) - collect facts.
+   A headline or job count is useful only if it clearly belongs to this company. If no source gives a
+   useful fact, use the website. If even the website could not be read, call disqualify_lead and say why.
 4. submit_draft - then stop.
 
 Rules for the email:

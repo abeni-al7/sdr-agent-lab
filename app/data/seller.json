@@ -3,10 +3,34 @@
   "sender": "Abenezer",
   "profile": "ListForge turns Sales Navigator searches into clean, verified prospect lists in minutes. It removes duplicates, finds verified work emails and exports to any CRM. Sales teams that use it save about 6 hours per rep each week on list building. Call to action: offer a 15-minute walkthrough.",
   "icp": {
-    "industries": ["B2B SaaS", "Fintech SaaS", "HR SaaS", "Lead generation agency", "Marketing agency"],
+    "industries": [
+      "B2B SaaS",
+      "Fintech SaaS",
+      "HR SaaS",
+      "Lead generation agency",
+      "Marketing agency"
+    ],
     "min_employees": 10,
     "max_employees": 1000,
-    "buyer_keywords": ["sales", "sdr", "business development", "revenue", "growth", "founder"],
-    "threshold": 60
+    "buyer_keywords": [
+      "sales",
+      "sdr",
+      "business development",
+      "revenue",
+      "growth",
+      "founder"
+    ],
+    "threshold": 60,
+    "industry_keywords": [
+      "saas",
+      "software",
+      "fintech",
+      "hr tech",
+      "crm",
+      "sales engagement",
+      "lead generation",
+      "marketing agency",
+      "b2b platform"
+    ]
   }
 }

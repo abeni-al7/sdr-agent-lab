@@ -1,0 +1,31 @@
+{
+  "name": "ListForge",
+  "sender": "Sam",
+  "profile": "ListForge turns Sales Navigator searches into clean, verified prospect lists in minutes. It removes duplicates, finds verified work emails and exports to any CRM. Call to action: offer a 15-minute walkthrough.",
+  "icp": {
+    "industry_keywords": [
+      "saas",
+      "software",
+      "fintech",
+      "agency"
+    ],
+    "min_employees": 10,
+    "max_employees": 1000,
+    "buyer_keywords": [
+      "sales",
+      "sdr",
+      "business development",
+      "revenue",
+      "growth",
+      "founder",
+      "ceo"
+    ],
+    "threshold": 60
+  },
+  "rules": {
+    "max_words": 110,
+    "banned_phrases": []
+  },
+  "research_mode": "ask",
+  "max_paid_usd_per_lead": 0.05
+}

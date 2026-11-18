@@ -88,6 +88,21 @@ memories = Table(
     Column("created_at", Float),
 )
 
+leads = Table(
+    "leads", meta,                          # real leads added in the console (demo leads live in data/)
+    Column("id", String(20), primary_key=True),
+    Column("name", String(120)),
+    Column("title", String(160)),
+    Column("company", String(120)),
+    Column("domain", String(253)),
+    Column("industry", String(160)),
+    Column("employees", Integer),
+    Column("hq", String(120)),
+    Column("topic", String(40)),
+    Column("source", String(200)),
+    Column("created_at", Float),
+)
+
 eval_runs = Table(
     "eval_runs", meta,
     Column("id", String(40), primary_key=True),
@@ -147,12 +162,12 @@ def seed_memories() -> None:
 
 def reset_demo() -> None:
     with engine.begin() as conn:
-        for table in (spans, drafts, runs, eval_runs):
+        for table in (spans, drafts, runs, eval_runs, leads):
             conn.execute(delete(table))
         conn.execute(delete(memories).where(memories.c.source != "seed"))
 
 
 __all__ = [
-    "engine", "runs", "spans", "drafts", "memories", "eval_runs", "new_id", "dumps", "loads", "row",
+    "engine", "runs", "spans", "drafts", "memories", "eval_runs", "leads", "new_id", "dumps", "loads", "row",
     "init_db", "reset_demo", "select", "insert", "update", "delete",
 ]
