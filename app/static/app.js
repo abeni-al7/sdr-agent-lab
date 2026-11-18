@@ -199,7 +199,7 @@ async function runView(id) {
 function traceRow(s, maxDur) {
   const isOpen = open.has(s.id);
   const flags = (s.flags || []).map((f) => `<span class="flag">${ICON.flag}${esc(f.replaceAll("_", " "))}</span>`).join("");
-  const status = s.status !== "ok" ? mark(s.status) : "";
+  const status = s.status !== "ok" && !(s.flags || []).length ? mark(s.status) : "";  // a flag already says why
   const tag = s.kind === "llm" ? callSummary(s.output) : s.kind === "guard" ? guardSummary(s) : "";
   const pct = Math.max(1.5, ((s.duration_ms || 0) / maxDur) * 100);
   return `
