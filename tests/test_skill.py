@@ -65,3 +65,16 @@ def test_unqualified_lead_blocked(tmp_path):
     sdr(tmp_path, "score", "--lead", LEAD, "--industry", "Mining", "--title", "VP Engineering", "--employees", "5000")
     code, r = sdr(tmp_path, "check", "--lead", LEAD, "--draft", draft(tmp_path))
     assert code == 1 and any(f["check"] == "icp" for f in r["failures"])
+
+
+def test_contact_email_shown_on_draft_and_checked(tmp_path):
+    setup(tmp_path)
+    code, r = sdr(tmp_path, "contact", "--lead", LEAD, "--email", "Lucas@Pivotly.example", "--status", "verified",
+                  "--cost", "0.0026", "--tool", "find-work-email")
+    assert code == 0 and r["email"] == "lucas@pivotly.example" and not r["warnings"]
+    _, r = sdr(tmp_path, "contact", "--lead", LEAD, "--email", "info@other.example", "--status", "invalid")
+    assert len(r["warnings"]) == 3  # other domain, shared inbox, invalid
+    sdr(tmp_path, "contact", "--lead", LEAD, "--email", "lucas@pivotly.example", "--status", "verified")
+    code, r = sdr(tmp_path, "save-draft", "--lead", LEAD, "--draft", draft(tmp_path))
+    assert code == 0 and r["to"] == "lucas@pivotly.example" and r["paid_usd"] == 0.0026
+    assert "**To:** lucas@pivotly.example (verified" in (tmp_path / r["path"]).read_text()

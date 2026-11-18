@@ -38,7 +38,8 @@ SELLER_TEMPLATE = {
 MODES = {
     "free": "Free public sources only: website, Google News RSS, public job boards, Wikidata. No cost.",
     "agensi": "Free sources first, then this skill's paid Agensi tools to fill gaps (person and company "
-              "enrichment, better news search). Usually $0.01 to $0.05 per lead, capped by max_paid_usd_per_lead.",
+              "enrichment, better news search) and to find and verify the lead's work email. "
+              "Usually $0.01 to $0.05 per lead, capped by max_paid_usd_per_lead.",
     "ask": "Not chosen yet. Ask the user: free or agensi? Then run `sdr.py mode <choice>`.",
 }
 
@@ -382,8 +383,11 @@ def cmd_save_draft(args):
     findings = load_json(d / "findings.json", [])
     path = ROOT / "drafts" / f"{run['lead']}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
+    c = run.get("contact") or {}
+    to = f"{c['email']} ({c['status']}, via {c.get('tool') or 'user'})" if c.get("email") else "unknown: add it with `sdr.py contact`"
     lines = [f"# Draft for {run['name']} ({run['domain']})", "",
              "Status: WAITING FOR HUMAN REVIEW. Nothing was sent.", "",
+             f"**To:** {to}", "",
              f"**Subject:** {draft['subject']}", "", draft["body"], "", "## Facts used", ""]
     for f in draft["facts"]:
         lines.append(f"- {f.get('claim')} (`{f.get('source_id')}`): {sources.get(f.get('source_id'), '')[:200]}")
@@ -397,7 +401,7 @@ def cmd_save_draft(args):
               "injection leak, recent contact, ICP.", ""]
     path.write_text("\n".join(lines), encoding="utf-8")
     save_json(d / "draft.json", draft)
-    out({"saved": True, "path": str(path), "paid_usd": run.get("paid_usd", 0),
+    out({"saved": True, "path": str(path), "paid_usd": run.get("paid_usd", 0), "to": c.get("email"),
          "next": "Show the draft to the user. Do not send it."})
 
 
@@ -416,6 +420,33 @@ def cmd_reject(args):
     scope = {"lead": f"lead:{run['lead']}", "company": f"company:{run['domain']}", "global": "global"}[args.scope]
     remember({"scope": scope, "kind": "lesson", "text": args.lesson.strip()})
     out({"ok": True, "scope": scope, "note": "Lesson saved. Run the lead again to get a new draft."})
+
+
+_ROLE_INBOX = re.compile(r"^(info|hello|contact|sales|support|admin|office|team|hr|jobs|careers|noreply|no-reply)@", re.I)
+
+
+def cmd_contact(args):
+    """Save the lead's work email. It is kept apart from research sources, so it can never be quoted as a fact."""
+    d = run_dir(args.lead)
+    run = load_json(d / "run.json", {})
+    email = args.email.strip().lower()
+    if not re.fullmatch(r"[\w.+-]+@[\w-]+(\.[\w-]+)+", email):
+        die(f"'{email}' is not an email address")
+    warnings = []
+    dom = email.split("@", 1)[1]
+    if not (dom == run["domain"] or dom.endswith("." + run["domain"]) or run["domain"].endswith("." + dom)):
+        warnings.append(f"email domain {dom} is not the company domain {run['domain']}; check it is the same company")
+    if _ROLE_INBOX.match(email):
+        warnings.append("this is a shared inbox, not the person")
+    if args.status == "invalid":
+        warnings.append("verification says invalid: do not send to this address")
+    run["contact"] = {"email": email, "status": args.status, "tool": args.tool, "checked_at": time.time()}
+    if args.cost:
+        run["paid_usd"] = round(run.get("paid_usd", 0) + args.cost, 4)
+        run.setdefault("paid_calls", []).append({"source_id": "contact:email", "tool": args.tool, "usd": args.cost})
+    save_json(d / "run.json", run)
+    out({"ok": True, "email": email, "status": args.status, "warnings": warnings,
+         "paid_usd_this_lead": run.get("paid_usd", 0)})
 
 
 def cmd_mode(args):
@@ -463,6 +494,12 @@ def main():
         a.set_defaults(fn=fn)
 
     a = sub.add_parser("approve"); a.add_argument("--lead", required=True); a.set_defaults(fn=cmd_approve)
+
+    a = sub.add_parser("contact", help="save the lead's work email (shown as To: on the draft)")
+    a.add_argument("--lead", required=True); a.add_argument("--email", required=True)
+    a.add_argument("--status", choices=["verified", "risky", "unverified", "invalid", "from-user"], default="unverified")
+    a.add_argument("--cost", type=float, default=0.0); a.add_argument("--tool")
+    a.set_defaults(fn=cmd_contact)
 
     a = sub.add_parser("reject")
     a.add_argument("--lead", required=True); a.add_argument("--lesson", required=True)

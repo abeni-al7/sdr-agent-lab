@@ -1,6 +1,6 @@
 ---
 name: sdr-lead-research
-description: Researches ONE B2B sales lead, qualifies it against your ideal customer profile, and writes a short, fact-checked first cold email for you to approve. Use when the user says "research this lead", "write a cold email to <person> at <company>", "qualify this prospect", or pastes a lead from Sales Navigator, Apollo or a CRM. It never sends email.
+description: Researches ONE B2B sales lead, qualifies it against your ideal customer profile, and writes a short, fact-checked first cold email for you to approve, addressed to the lead's verified work email (paid mode). Use when the user says "research this lead", "write a cold email to <person> at <company>", "qualify this prospect", or pastes a lead from Sales Navigator, Apollo or a CRM. It never sends email.
 summary: One lead in, one grounded cold email out. Research with free public sources, or add paid Agensi tools to fill gaps for a few cents per lead. You choose. Memory, ICP scoring, prompt-injection filtering and 8 guardrail checks run in code, so every claim in the email comes from a real source. A human approves every email.
 version: 1.0.0
 tags: [sales, sdr, cold-email, lead-research, outbound, b2b]
@@ -25,7 +25,8 @@ Requires: Python 3.9+ (standard library only) and an agent that can fetch web pa
 
 - **free**: only free public sources (company website, Google News RSS, public job boards, Wikidata). Costs nothing.
   Good for companies with a website and some public footprint. Size and industry may need to come from the user.
-- **agensi**: free sources first, then this skill's paid Agensi tools fill what is still missing (person and
+- **agensi**: free sources first, then this skill's paid Agensi tools find and verify the lead's work email and fill
+  what is still missing (person and
   company enrichment, better news search). Needs the agent connected to Agensi (`https://mcp.agensi.io/mcp/auth`)
   and a balance. Usually $0.01 to $0.05 per lead, never more than the user's per-lead budget.
 
@@ -103,19 +104,37 @@ specific fact about the company.
    | No useful recent fact | Google News results for a keyword ($0.0002); open jobs on SmartRecruiters or Workable (free); hirebase open jobs for any company ($0.02 per 10) |
    | Lead title or seniority | Apollo: enrich a person by name + company or LinkedIn URL ($0.034). The most expensive tool: use it only when the user gave no title |
 
+   The work-email finder and email verifier are used in step 3b, not here.
+
 2. `quote_tool` first (free). If the quote would take this lead over `paid_budget_usd` from `sdr start`, skip that
    call and say why. Then `run_tool` with the same input.
 3. Save each result with `sdr add-source ... --cost <USD charged> --tool <tool id>`. Paid results are data from
    third parties: save news and web content with `--untrusted --echo` too.
 4. If a paid call fails or returns nothing, do not retry it with another paid tool for the same gap. Note the gap.
 
-Never use paid tools to find personal emails or phone numbers. This skill writes a draft; the user already has a
-way to reach the lead.
+Phone numbers and personal (non-work) emails are out of scope: never look them up.
 
 ### 3. Qualify
 
 `sdr score --lead <id> --industry "<industry>" --title "<title>" --employees <n>`, using facts you saved.
-If `qualified` is false, stop and report the score reasons. Do not write an email.
+If `qualified` is false, stop and report the score reasons. Do not write an email and do not look up an email
+address (don't spend money on leads you will not contact).
+
+### 3b. Find the lead's work email
+
+Only for a qualified lead, so the user has an address to send the draft to.
+
+1. If the user gave an email, save it: `sdr contact --lead <id> --email <address> --status from-user`. Done.
+2. **agensi mode:** use the attached "find a work email" tool (name + company domain), then the attached "verify an
+   email address" tool on the result. Quote first; respect the budget. Save it with
+   `sdr contact --lead <id> --email <address> --status verified|risky|invalid --cost <USD> --tool <tool id>`
+   (add the verify cost the same way, or sum both calls in one `--cost`).
+3. **free mode:** do not guess an address from a name pattern; an unverified guess bounces and hurts the user's
+   domain reputation. Say "no email found in free mode" and offer agensi mode for this lead.
+4. Read `warnings` from `sdr contact`. Never present an `invalid` address as ready to send. Tell the user about a
+   `risky` one (catch-all domain) or one on a different domain than the company.
+
+The email address is contact data, not a research fact: never mention it in the email body.
 
 ### 4. Write the draft
 
@@ -144,7 +163,7 @@ When it passes: `sdr save-draft --lead <id> --draft sdr/runs/<id>/draft.json`.
 
 ### 6. Report
 
-Show the user: the subject and body (ready to copy), the facts used with their sources, the ICP score, any
+Show the user: the **To:** address and its status, the subject and body (ready to copy), the facts used with their sources, the ICP score, any
 removed injections, the research mode, and the money spent on paid tools (`paid_usd` from `save-draft`). Then say: "Reply **sent** after you send it, or tell me what to change."
 
 - User sent it: `sdr approve --lead <id>` (the lead is skipped for 30 days).
