@@ -1,7 +1,7 @@
 ---
 name: sdr-lead-research
 description: Researches ONE B2B sales lead, qualifies it against your ideal customer profile, and writes a short, fact-checked first cold email for you to approve. Use when the user says "research this lead", "write a cold email to <person> at <company>", "qualify this prospect", or pastes a lead from Sales Navigator, Apollo or a CRM. It never sends email.
-summary: One lead in, one grounded cold email out. Research with free public sources, or add paid Agensi tools to fill gaps for about 1 cent per lead. You choose. Memory, ICP scoring, prompt-injection filtering and 8 guardrail checks run in code, so every claim in the email comes from a real source. A human approves every email.
+summary: One lead in, one grounded cold email out. Research with free public sources, or add paid Agensi tools to fill gaps for a few cents per lead. You choose. Memory, ICP scoring, prompt-injection filtering and 8 guardrail checks run in code, so every claim in the email comes from a real source. A human approves every email.
 version: 1.0.0
 tags: [sales, sdr, cold-email, lead-research, outbound, b2b]
 keywords: [sdr, cold email, lead qualification, icp, prospect research, outbound, sales navigator, apollo, personalization]
@@ -27,7 +27,7 @@ Requires: Python 3.9+ (standard library only) and an agent that can fetch web pa
   Good for companies with a website and some public footprint. Size and industry may need to come from the user.
 - **agensi**: free sources first, then this skill's paid Agensi tools fill what is still missing (person and
   company enrichment, better news search). Needs the agent connected to Agensi (`https://mcp.agensi.io/mcp/auth`)
-  and a balance. Usually under $0.01 per lead, never more than the user's per-lead budget.
+  and a balance. Usually $0.01 to $0.05 per lead, never more than the user's per-lead budget.
 
 ## The helper script
 
@@ -46,7 +46,7 @@ keywords, employee range, buyer title keywords, threshold, default 60). Optional
 and `rules.banned_phrases`. Never invent results or customers for the seller.
 
 Then ask the research question once, in these words: "Free research only, or free plus paid Agensi tools
-(usually under 1 cent per lead) to fill gaps?" Save the answer with `sdr mode free` or
+(usually 1 to 5 cents per lead) to fill gaps?" Save the answer with `sdr mode free` or
 `sdr mode agensi --budget <USD per lead, default 0.05>`. The user can switch any time ("use paid tools",
 "free only") and you run `sdr mode` again. A one-off request ("use paid tools for this lead") applies to that
 lead only; do not change the saved mode for it.
@@ -96,12 +96,12 @@ specific fact about the company.
    Use only those tools. Pick the cheapest one that fits the gap; routed "Agensi" tools that try several providers
    are usually the cheapest.
 
-   | Gap | Kind of tool to use |
+   | Gap | Attached tool (about) |
    |---|---|
-   | Lead title or seniority | enrich a person (name + company domain, or LinkedIn URL) |
-   | Company industry or size | enrich a company (domain) |
-   | Website could not be read | extract content from one web page |
-   | No useful recent fact | search recent news; or company job listings |
+   | Company industry or size | Hunter: enrich a company by domain ($0.006) |
+   | Website could not be read | Extract clean content from one web page, best of 15 providers (free to $0.001) |
+   | No useful recent fact | Google News results for a keyword ($0.0002); open jobs on SmartRecruiters or Workable (free); hirebase open jobs for any company ($0.02 per 10) |
+   | Lead title or seniority | Apollo: enrich a person by name + company or LinkedIn URL ($0.034). The most expensive tool: use it only when the user gave no title |
 
 2. `quote_tool` first (free). If the quote would take this lead over `paid_budget_usd` from `sdr start`, skip that
    call and say why. Then `run_tool` with the same input.

@@ -38,7 +38,7 @@ SELLER_TEMPLATE = {
 MODES = {
     "free": "Free public sources only: website, Google News RSS, public job boards, Wikidata. No cost.",
     "agensi": "Free sources first, then this skill's paid Agensi tools to fill gaps (person and company "
-              "enrichment, better news search). Usually under $0.01 per lead, capped by max_paid_usd_per_lead.",
+              "enrichment, better news search). Usually $0.01 to $0.05 per lead, capped by max_paid_usd_per_lead.",
     "ask": "Not chosen yet. Ask the user: free or agensi? Then run `sdr.py mode <choice>`.",
 }
 
